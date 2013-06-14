@@ -5,7 +5,7 @@ Note: The ado program "mat2txt" must be installed in order to save the matrices 
 
 do "C:\Code\m4RH_missing_data_sim\set_paths.do"
 
-use "$dhs\DHS data for estimating covariance.dta", clear
+use "$temp\DHS data for estimating covariance.dta", clear
 
 * Note: I have no idea which methods these variables refer to
 * but knowledge of them seems to be close to 50% which is what we
@@ -40,6 +40,10 @@ matrix define mvp_sig_se = (1,0,0,0,0,0,0 ///
 	\e(serho51),e(serho52),e(serho53),e(serho54),1,0,0  ///
 	\e(serho61),e(serho62),e(serho63),e(serho64),e(serho65),1,0  ///
 	\e(serho71),e(serho72),e(serho73),e(serho74),e(serho75),e(serho76),1)
+
+matrix define b = e(b)
+matrix define mvp_beta = (b[1,1..8]\b[1,9..16]\b[1,17..24]\b[1,25..32]\b[1,33..40]\b[1,41..48]\b[1,49..56])
+matrix rownames mvp_beta = v304_02 v304_06 v304_07 v304_08 v304_09 v304_13 v304_16
 	
 * estimate error term covariance structure using sureg
 sureg (v304_02 `covariates') ///
@@ -51,9 +55,12 @@ sureg (v304_02 `covariates') ///
 	(v304_16 `covariates')
 estimates store sureg_ests
 matrix define sureg_sig = e(Sigma)
+matrix define c = e(b)
+matrix define sureg_beta = (c[1,1..8]\c[1,9..16]\c[1,17..24]\c[1,25..32]\c[1,33..40]\c[1,41..48]\c[1,49..56])
+matrix rownames sureg_beta = v304_02 v304_06 v304_07 v304_08 v304_09 v304_13 v304_16
 
-mat2txt, matrix(mvp_sig) saving("$temp\mv probit correlation matrix.txt")
-mat2txt, matrix(mvp_sig_se) saving("$temp\mv probit correlation matrix se estimates.txt")
-mat2txt, matrix(sureg_sig) saving("$temp\SUREG covariance matrix.txt")
-
-
+mat2txt, matrix(mvp_sig) saving("$temp\mv probit correlation matrix.txt") replace
+mat2txt, matrix(mvp_sig_se) saving("$temp\mv probit correlation matrix se estimates.txt") replace
+mat2txt, matrix(sureg_sig) saving("$temp\SUREG covariance matrix.txt") replace
+mat2txt, matrix(mvp_beta) saving("$temp\mvp beta.txt") replace
+mat2txt, matrix(sureg_beta) saving("$temp\sureg beta.txt") replace
