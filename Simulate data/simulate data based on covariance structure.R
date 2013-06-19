@@ -9,7 +9,10 @@ temp <- "H:/IHA/SHOPS/M+E/SHOPS M&E/2 Country and study-level/Studies/M4RH/Data/
 setwd(temp)
 library(foreign)
 library(mvtnorm)
-library(mi)
+# library(mi)
+library(Amelia)
+library(Zelig)
+
 
 # Read in data and output from multivariate probit model fit in Stata
 mvp_corr <- as.matrix(read.table("mv probit correlation matrix.txt"))
@@ -57,7 +60,7 @@ gen_data <- function() {
   z
 }
 
-num_iter <- 1
+num_iter <- 5
 results <- data.frame(iter = seq(1, num_iter), 
                       impact_true = numeric(num_iter), std_err_true = numeric(num_iter),
                       impact_mcar = numeric(num_iter), std_err_mcar = numeric(num_iter))
@@ -70,10 +73,26 @@ remove_mcar <- function(y) {
   y
 }
 
+remove_mnar <- function(y) {
+  df3 <- data.frame(y, covars)
+  k <- length(df3)
+  beta <- matrix(rnorm(k*7), k , 7)
+  # make the beta correspondging to age smaller than the others since it can take on larger values
+  temp <- diag(14)
+  temp[8,8] <- .1
+  beta  <- temp %*% beta
+  epsilon <- matrix(rnorm(n*7),n,7)
+  missing_star <- as.matrix(df3) %*% beta + epsilon
+  threshold <- quantile(missing_star, probs = .7)
+  y[missing_star > threshold] <- NA
+  y
+}
+
 
 for (iter in 1:num_iter) {
   sim_data <- gen_data()
-  
+  y <- remove_mnar(sim_data$y)
+  sum(is.na(y)) / length(y)
   # generate results of simple regression of total answers correct on X and treat  
   y_total <- apply(sim_data$y, 1, sum)
   treat <- sim_data$treat
@@ -86,13 +105,14 @@ for (iter in 1:num_iter) {
   mcar_y <- remove_mcar(sim_data$y)
   df_mcar <- data.frame(mcar_y, covars)
   
-  # multiply impute the data using mi package with defaults
-  # mi_settings <- mi.info(df_mcar)
-  # mi_settings$include[15] <- FALSE
-  df_mcar_mi <- mi(df_mcar)
-  fit_mcar_mi <- lm.mi(y_total ~ age + primary + secondary + higher + christian + muslim + treat, mi.object = df_mcar_mi)
-  results[iter, 4] <- coef(summary(fit1))["treat", 1]
-  results[iter, 5] <- coef(summary(fit1))["treat", 2]
+  # multiply impute the data using amelia package with defaults
+  nominal_variables <- names(df_mcar)[!names(df_mcar)=="age"]
+  df_mcar_mi <- amelia(df_mcar, m = 5, noms = nominal_variables)
+  df_mcar_mi <- transform(df_mcar_mi, y_total = v304_02+v304_06+v304_07+v304_08+v304_09+v304_13+v304_16) 
+  fit_mcar <- zelig(y_total ~ age + primary + secondary + higher + christian + muslim + treat,
+                    data = df_mcar_mi, model = "ls")
+  results[iter, 4] <- coef(summary(fit_mcar))["treat", 1]
+  results[iter, 5] <- coef(summary(fit_mcar))["treat", 2]
 }
 
 
