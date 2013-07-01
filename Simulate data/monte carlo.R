@@ -9,7 +9,7 @@ temp <- "H:/IHA/SHOPS/M+E/SHOPS M&E/2 Country and study-level/Studies/M4RH/Prior
 setwd(temp)
 library(foreign)
 library(mvtnorm)
-# library(mi)
+library(mi)
 library(Amelia)
 library(Zelig)
 
@@ -60,7 +60,7 @@ gen_data <- function() {
   z
 }
 
-num_iter <- 5
+num_iter <- 1
 results <- data.frame(iter = seq(1, num_iter), 
                       impact_true = numeric(num_iter), std_err_true = numeric(num_iter),
                       impact_mcar = numeric(num_iter), std_err_mcar = numeric(num_iter),
@@ -92,8 +92,8 @@ remove_mnar <- function(y) {
 
 for (iter in 1:num_iter) {
   sim_data <- gen_data()
-  y <- remove_mnar(sim_data$y)
-  sum(is.na(y)) / length(y)
+  # y <- remove_mnar(sim_data$y)
+  # sum(is.na(y)) / length(y)
   # generate results of simple regression of total answers correct on X and treat  
   y_total <- apply(sim_data$y, 1, sum)
   treat <- sim_data$treat
@@ -112,7 +112,6 @@ for (iter in 1:num_iter) {
   df_mcar_mi <- transform(df_mcar_mi, y_total = v304_02+v304_06+v304_07+v304_08+v304_09+v304_13+v304_16) 
   fit_mcar <- zelig(y_total ~ age + primary + secondary + higher + christian + muslim + treat,
                     data = df_mcar_mi, model = "ls")
-
   results[iter, 4] <- coef(summary(fit_mcar))["treat", 1]
   results[iter, 5] <- coef(summary(fit_mcar))["treat", 2]
   
@@ -125,7 +124,6 @@ for (iter in 1:num_iter) {
   df_mnar_mi <- transform(df_mnar_mi, y_total = v304_02+v304_06+v304_07+v304_08+v304_09+v304_13+v304_16) 
   fit_mnar <- zelig(y_total ~ age + primary + secondary + higher + christian + muslim + treat,
                     data = df_mnar_mi, model = "ls")
-  
   results[iter, 6] <- coef(summary(fit_mnar))["treat", 1]
   results[iter, 7] <- coef(summary(fit_mnar))["treat", 2]
 }
