@@ -5,7 +5,7 @@
 
 # set paths and other housekeeping
 remove(list = ls())
-temp <- "H:/IHA/SHOPS/M+E/SHOPS M&E/2 Country and study-level/Studies/M4RH/Data/Temp"
+temp <- "H:/IHA/SHOPS/M+E/SHOPS M&E/2 Country and study-level/Studies/M4RH/Prior Usage Data/Temp"
 setwd(temp)
 library(foreign)
 library(mvtnorm)
@@ -25,8 +25,8 @@ mvp_corr <- mvp_corr + t(mvp_corr) - diag(7)
 
 # Create matrix of covariates.  Note that the order of the covariates should match the 
 # order of the covariates used when estimating the model in Stata so that the covariates
-# match up with the appropriate betas. This means that constant term in X should be at the 
-# end of the matrix
+# match up with the appropriate betas. This means that the constant term in X should be the last 
+# column of the matrix
 covars <- subset(df, select = c("age", "primary", "secondary", "higher", "christian", "muslim"))
 covars$sex <- ifelse(df$sex=="male", 1, 0)
 X <- cbind(as.matrix(covars),rep(1, n))
@@ -42,7 +42,7 @@ gen_data <- function() {
   # generate a random treatment effect for each of the treated units
   # equal to a random term for each individual and a random effect for each question
   alpha <- rnorm(n, sd = .02)
-  delta <- rnorm(7, mean = .1, sd = .01)
+  delta <- rnorm(7, mean = .1, sd = .05)
   delta
   treat_effect <- matrix(rep(alpha,7),n,7) + t(matrix(rep(delta, n),7,n))
   treat_mat <- matrix(rep(treat, 7),n,7)
@@ -63,7 +63,8 @@ gen_data <- function() {
 num_iter <- 5
 results <- data.frame(iter = seq(1, num_iter), 
                       impact_true = numeric(num_iter), std_err_true = numeric(num_iter),
-                      impact_mcar = numeric(num_iter), std_err_mcar = numeric(num_iter))
+                      impact_mcar = numeric(num_iter), std_err_mcar = numeric(num_iter),
+                      impact_mnar = numeric(num_iter), std_err_mnar = numeric(num_iter))
 
 remove_mcar <- function(y) {
   # randomly select p% of y values and replace with NA
@@ -77,7 +78,7 @@ remove_mnar <- function(y) {
   df3 <- data.frame(y, covars)
   k <- length(df3)
   beta <- matrix(rnorm(k*7), k , 7)
-  # make the beta correspondging to age smaller than the others since it can take on larger values
+  # make the beta corresponding to age smaller than the others since it can take on larger values
   temp <- diag(14)
   temp[8,8] <- .1
   beta  <- temp %*% beta
@@ -105,14 +106,28 @@ for (iter in 1:num_iter) {
   mcar_y <- remove_mcar(sim_data$y)
   df_mcar <- data.frame(mcar_y, covars)
   
-  # multiply impute the data using amelia package with defaults
+  # multiply impute MCAR data using amelia package with defaults
   nominal_variables <- names(df_mcar)[!names(df_mcar)=="age"]
   df_mcar_mi <- amelia(df_mcar, m = 5, noms = nominal_variables)
   df_mcar_mi <- transform(df_mcar_mi, y_total = v304_02+v304_06+v304_07+v304_08+v304_09+v304_13+v304_16) 
   fit_mcar <- zelig(y_total ~ age + primary + secondary + higher + christian + muslim + treat,
                     data = df_mcar_mi, model = "ls")
+
   results[iter, 4] <- coef(summary(fit_mcar))["treat", 1]
   results[iter, 5] <- coef(summary(fit_mcar))["treat", 2]
+  
+  # remove some data randomly (MNAR)
+  mnar_y <- remove_mnar(sim_data$y)
+  df_mnar <- data.frame(mnar_y, covars)
+
+  # multiply impute MNAR data using amelia package with defaults
+  df_mnar_mi <- amelia(df_mnar, m = 5, noms = nominal_variables)
+  df_mnar_mi <- transform(df_mnar_mi, y_total = v304_02+v304_06+v304_07+v304_08+v304_09+v304_13+v304_16) 
+  fit_mnar <- zelig(y_total ~ age + primary + secondary + higher + christian + muslim + treat,
+                    data = df_mnar_mi, model = "ls")
+  
+  results[iter, 6] <- coef(summary(fit_mnar))["treat", 1]
+  results[iter, 7] <- coef(summary(fit_mnar))["treat", 2]
 }
 
 
