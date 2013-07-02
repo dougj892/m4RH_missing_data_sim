@@ -14,3 +14,5 @@ The code in this repository attempts to test the effectiveness of two different 
 ## To do on FIML
 - Modify the model and data input into the model to account for slight changes in the list of covariates and number of outcome variables
 - Add code to generate the predicted value of y_total under treatment and y_total under control for each iteration.  Then add code to derive confidence intervals from estimated full distribution
+
+## Checking how difficult it is to modify a file on my laptop and then use it on my work computer
