@@ -1,0 +1,29 @@
+# code borrowed from a file submitted to the Stan user group
+model {
+  for (i in 1:N) {
+    Z[i, 1:J] ~ dmnorm(Mu[i, ], Tau[, ])
+    for (j in 1:J) {
+      Mu[i, j] <- a[j] + b[j]*sex[i] + c[j]*christian[i] + d[j]*muslim[i] + e[j]*treat[i] + f[j]*age[i] + g[j]*primary[i] + h[j]*secondary[i] + k[j]*higher[i]
+	    # The line just below sets p_ij equal to 1 if z_ij is greater than 0 and 0 otherwise.  
+      # The next line appears to set y_ij equal to p_ij.  
+      # It is unclear why we can't just directly set y_ij <- p_ij.  
+      # It might be because this is necessary to let JAGS know that y is a stochastic node  
+      p[i, j] <- step(Z[i, j])
+	  y[i, j] ~ dbern(p[i, j])
+	  }        
+  }
+  
+  for(j in 1:J) {
+	a[j] ~ dnorm(0, .0001) 
+	b[j] ~ dnorm(0, .0001) 
+	c[j] ~ dnorm(0, .0001) 
+	d[j] ~ dnorm(0, .0001) 
+	e[j] ~ dnorm(0, .0001) 
+  f[j] ~ dnorm(0, .0001) 
+  g[j] ~ dnorm(0, .0001) 
+  h[j] ~ dnorm(0, .0001) 
+  k[j] ~ dnorm(0, .0001) 
+  }
+  
+  Tau[1:J, 1:J] ~ dwish(ID[, ], degrees)
+}
