@@ -5,11 +5,12 @@
 
 # set paths and other housekeeping
 remove(list = ls())
-temp <- "H:/IHA/SHOPS/M+E/SHOPS M&E/2 Country and study-level/Studies/M4RH/Prior Usage Data/Temp"
-setwd(temp)
+df_dir <- "H:/IHA/SHOPS/M+E/SHOPS M&E/2 Country and study-level/Studies/M4RH/Data for Monte Carlo Simulations"
+stata_output <- "H:/IHA/SHOPS/M+E/SHOPS M&E/2 Country and study-level/Studies/M4RH/Data for Monte Carlo Simulations/Simulated data"
+setwd(df_dir)
 library(foreign)
 library(mvtnorm)
-library(mi)
+# library(mi)
 library(Amelia)
 library(Zelig)
 
@@ -60,7 +61,7 @@ gen_data <- function() {
   z
 }
 
-num_iter <- 1
+num_iter <- 2
 results <- data.frame(iter = seq(1, num_iter), 
                       impact_true = numeric(num_iter), std_err_true = numeric(num_iter),
                       impact_mcar = numeric(num_iter), std_err_mcar = numeric(num_iter),
@@ -89,47 +90,93 @@ remove_mnar <- function(y) {
   y
 }
 
+test_fiml <- function(df) {
+  # generate constants 
+  N <- nrow(df)
+  # J is the number of outcome variables
+  J <- 7
+  # K is the number of coviarates
+  K <- 7
+  ID <- diag(J)
+  degrees <- J + 1
+  # throw the y variables into a matrix
+  y_var_names <- grep("v304*", names(df), value = TRUE)
+  y <- as.matrix(subset(df, select = y_var_names))
+  
+  # compile data into a list to pass to jags.model
+  attach(df)
+  data4jags2 <- list("age" = age, "primary" = primary, "secondary" = secondary, 
+                     "higher" = higher, "christian" = christian,  "muslim" = muslim,
+                     "treat" = treat, "sex" = sex, 'y' = y, 'N' = N, 'J' = J, 'ID' = ID, 'degrees' = degrees)
+  
+  
+  
+  # create function to randomly pick initial values for 
+  jags_inits <- function() {
+    list(a = rnorm(J), b = rnorm(J), c = rnorm(J), d = rnorm(J), e = rnorm(J), f = rnorm(J), g = rnorm(J), h = rnorm(J), k = rnorm(J), Z = (y-.5))
+  }
+  
+    # fit the model using JAGS and perform burnin
+  dir <- "C:/Code/m4RH_missing_data_sim/Simulate data"
+  setwd(dir)
+  fitted_model <- jags.model('m4rh_mvprobit.bug', data = data4jags2, inits = jags_inits, n.chains = 4, n.adapt = 100)
+  
+  # run MCMC and save output
+  out <- coda.samples(model = fitted_model, variable.names = c("a", "e", "Tau"), n.iter = 10000, thin = 5)
+}
 
+
+# Perform MI and model fitting on a complete randomly generated dataset, 
+# the same dataset with observations MCAR, and the same dataset with observations MNAR
+setwd(stata_output)
 for (iter in 1:num_iter) {
+  # generate simulated data
   sim_data <- gen_data()
-  # y <- remove_mnar(sim_data$y)
-  # sum(is.na(y)) / length(y)
   # generate results of simple regression of total answers correct on X and treat  
   y_total <- apply(sim_data$y, 1, sum)
   treat <- sim_data$treat
   model_df <- cbind(y_total, covars, treat)
-  fit1 <- lm(y_total ~ age + primary + secondary + higher + christian + muslim + treat, data = model_df)
+  # export the full, complete generated to Stata for use later
+  write.dta(cbind(sim_data$y,covars), paste("Complete_data", iter, "Date", Sys.Date(), ".dta"))
+  fit1 <- lm(y_total ~ age + primary + secondary + higher + christian + muslim + treat + sex, data = model_df)
   results[iter, 2] <- coef(summary(fit1))["treat", 1]
   results[iter, 3] <- coef(summary(fit1))["treat", 2]
   
   # remove some data randomly (MCAR)
   mcar_y <- remove_mcar(sim_data$y)
   df_mcar <- data.frame(mcar_y, covars)
+  write.dta(df_mcar, paste("MCAR_data", iter, "Date", Sys.Date(), ".dta"))
   
   # multiply impute MCAR data using amelia package with defaults
-  nominal_variables <- names(df_mcar)[!names(df_mcar)=="age"]
-  df_mcar_mi <- amelia(df_mcar, m = 5, noms = nominal_variables)
-  df_mcar_mi <- transform(df_mcar_mi, y_total = v304_02+v304_06+v304_07+v304_08+v304_09+v304_13+v304_16) 
-  fit_mcar <- zelig(y_total ~ age + primary + secondary + higher + christian + muslim + treat,
-                    data = df_mcar_mi, model = "ls")
-  results[iter, 4] <- coef(summary(fit_mcar))["treat", 1]
-  results[iter, 5] <- coef(summary(fit_mcar))["treat", 2]
-  
+#   nominal_variables <- names(df_mcar)[!names(df_mcar)=="age"]
+#   df_mcar_mi <- amelia(df_mcar, m = 5, noms = nominal_variables)
+#   df_mcar_mi <- transform(df_mcar_mi, y_total = v304_02+v304_06+v304_07+v304_08+v304_09+v304_13+v304_16) 
+#   fit_mcar <- zelig(y_total ~ age + primary + secondary + higher + christian + muslim + treat + sex,
+#                     data = df_mcar_mi, model = "ls")
+#   results[iter, 4] <- coef(summary(fit_mcar))["treat", 1]
+#   results[iter, 5] <- coef(summary(fit_mcar))["treat", 2]
+#   
+  # Note: There is some slightly repetitive code below.  This is because Zelig cannot be called from within a function due to some weird error
   # remove some data randomly (MNAR)
   mnar_y <- remove_mnar(sim_data$y)
   df_mnar <- data.frame(mnar_y, covars)
+  write.dta(df_mnar, paste("MNAR_data", iter, "Date", Sys.Date(), ".dta"))
+# 
+#   # multiply impute MNAR data using amelia package with defaults
+#   df_mnar_mi <- amelia(df_mnar, m = 5, noms = nominal_variables)
+#   df_mnar_mi <- transform(df_mnar_mi, y_total = v304_02+v304_06+v304_07+v304_08+v304_09+v304_13+v304_16) 
+#   fit_mnar <- zelig(y_total ~ age + primary + secondary + higher + christian + muslim + treat + sex,
+#                     data = df_mnar_mi, model = "ls")
+#   results[iter, 6] <- coef(summary(fit_mnar))["treat", 1]
+#   results[iter, 7] <- coef(summary(fit_mnar))["treat", 2]
+#   
+  
+  # multiply impute the data using mi package with defaults
+  # mi_settings <- mi.info(df_mcar)
+  # mi_settings$include[15] <- FALSE
+#   df_mcar_mi_gelman <- mi(df_mcar)
+#   fit_mcar_mi_gelman <- lm.mi(y_total ~ age + primary + secondary + higher + christian + muslim + treat, mi.object = df_mcar_mi_gelman)
+  output <- test_fiml(df_mcar)
 
-  # multiply impute MNAR data using amelia package with defaults
-  df_mnar_mi <- amelia(df_mnar, m = 5, noms = nominal_variables)
-  df_mnar_mi <- transform(df_mnar_mi, y_total = v304_02+v304_06+v304_07+v304_08+v304_09+v304_13+v304_16) 
-  fit_mnar <- zelig(y_total ~ age + primary + secondary + higher + christian + muslim + treat,
-                    data = df_mnar_mi, model = "ls")
-  results[iter, 6] <- coef(summary(fit_mnar))["treat", 1]
-  results[iter, 7] <- coef(summary(fit_mnar))["treat", 2]
 }
-
-
-
-
-
 

@@ -11,5 +11,6 @@ The code in this repository attempts to test the effectiveness of two different 
 ## Notes on analysis
 - Having trouble achieving convergence with package mi in R.  In addition, it is unclear how to specify that the treatment status variable should not be included in the imputation model.
 
-## To do
-- 
+## To do on FIML
+- Modify the model and data input into the model to account for slight changes in the list of covariates and number of outcome variables
+- Add code to generate the predicted value of y_total under treatment and y_total under control for each iteration.  Then add code to derive confidence intervals from estimated full distribution
