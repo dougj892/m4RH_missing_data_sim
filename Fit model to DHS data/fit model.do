@@ -1,6 +1,6 @@
 /* 
 Estimate covariance structure of error terms in final specification
-Note: The ado program "mat2txt" must be installed in order to save the matrices as text files.
+Note: The ado programs "mvprobit" and "mat2txt" must be installed to run this do file.
 */
 
 do "C:\Code\m4RH_missing_data_sim\set_paths.do"
@@ -14,7 +14,7 @@ local outcome_vars "v304_02 v304_06 v304_07 v304_08 v304_09 v304_13 v304_16"
 local covariates "age primary secondary higher christian muslim sex"
 
 
-* estimate error term covariance structure using mvprobit
+* Fit a multivariate probit model to the data
 mvprobit (v304_02 `covariates') ///
 	(v304_06 `covariates') ///
 	(v304_07 `covariates') ///
@@ -24,7 +24,8 @@ mvprobit (v304_02 `covariates') ///
 	(v304_16 `covariates')
 estimates store mvp_ests
 
-
+* Save the estimated error correlation matrix as a Stata matrix
+* Note that I only populate the lower half of the matrix
 matrix define mvp_sig = (1,0,0,0,0,0,0 ///
 	\e(rho21),1,0,0,0,0,0 ///
 	\e(rho31),e(rho32),1,0,0,0,0 ///
@@ -41,11 +42,12 @@ matrix define mvp_sig_se = (1,0,0,0,0,0,0 ///
 	\e(serho61),e(serho62),e(serho63),e(serho64),e(serho65),1,0  ///
 	\e(serho71),e(serho72),e(serho73),e(serho74),e(serho75),e(serho76),1)
 
+* Save the estimated coefficients as a matrix
 matrix define b = e(b)
 matrix define mvp_beta = (b[1,1..8]\b[1,9..16]\b[1,17..24]\b[1,25..32]\b[1,33..40]\b[1,41..48]\b[1,49..56])
 matrix rownames mvp_beta = v304_02 v304_06 v304_07 v304_08 v304_09 v304_13 v304_16
 	
-* estimate error term covariance structure using sureg
+* Fit a SUREG model to the data and save the estimated error covariance matrix and coefficients as Stata matrices
 sureg (v304_02 `covariates') ///
 	(v304_06 `covariates') ///
 	(v304_07 `covariates') ///
@@ -59,6 +61,7 @@ matrix define c = e(b)
 matrix define sureg_beta = (c[1,1..8]\c[1,9..16]\c[1,17..24]\c[1,25..32]\c[1,33..40]\c[1,41..48]\c[1,49..56])
 matrix rownames sureg_beta = v304_02 v304_06 v304_07 v304_08 v304_09 v304_13 v304_16
 
+* Output the stored matrices as tab delimited files for use in the R programs
 mat2txt, matrix(mvp_sig) saving("$temp\mv probit correlation matrix.txt") replace
 mat2txt, matrix(mvp_sig_se) saving("$temp\mv probit correlation matrix se estimates.txt") replace
 mat2txt, matrix(sureg_sig) saving("$temp\SUREG covariance matrix.txt") replace
