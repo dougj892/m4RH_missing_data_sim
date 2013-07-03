@@ -1,4 +1,4 @@
-# code borrowed from a file submitted to the Stan user group
+# code based on a similar model uploaded to the Stan user group
 model {
   for (i in 1:N) {
     Z[i, 1:J] ~ dmnorm(Mu[i, ], Tau[, ])
