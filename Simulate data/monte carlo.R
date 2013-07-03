@@ -21,6 +21,7 @@
 # a missing at random missingness pattern which is non-trivial and the true data are unlikely to exhibit this pattern. 
 # 
 # Currently the FIML model is taking a humongous amount of time to run so I haven't actually checked the output from this model.
+# In addition, I am unable to get the MI package to converge.  Unclear what is going wrong here.
 # 
 # Package dependencies: mvtnorm, mi, Amelia, Zelig, rjags
 # 
