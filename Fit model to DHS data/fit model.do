@@ -5,7 +5,7 @@ Note: The ado programs "mvprobit" and "mat2txt" must be installed to run this do
 
 do "C:\Code\m4RH_missing_data_sim\set_paths.do"
 
-use "$temp\DHS data for estimating covariance.dta", clear
+use "$input\DHS data for estimating covariance.dta", clear
 
 * Note: I have no idea which methods these variables refer to
 * but knowledge of them seems to be close to 50% which is what we

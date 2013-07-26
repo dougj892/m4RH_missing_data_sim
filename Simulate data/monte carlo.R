@@ -32,7 +32,7 @@
 
 # set paths and other housekeeping
 remove(list = ls())
-df_dir <- "H:/IHA/SHOPS/M+E/SHOPS M&E/2 Country and study-level/Studies/M4RH/Data for Monte Carlo Simulations"
+df_dir <- "C:/Code/m4RH_missing_data_sim/Data"
 stata_output <- "H:/IHA/SHOPS/M+E/SHOPS M&E/2 Country and study-level/Studies/M4RH/Data for Monte Carlo Simulations/Simulated data"
 setwd(df_dir)
 library(foreign)
