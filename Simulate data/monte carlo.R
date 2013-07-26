@@ -128,6 +128,10 @@ test_fiml <- function(df) {
   # K is the number of coviarates
   K <- 7
   ID <- diag(J)
+  
+  # setting ID matrix to be smaller.  hopefully by assigning a strong prior on Tau
+  # we can speed convergence
+  ID <- ID / 10
   degrees <- J + 1
   # throw the y variables into a matrix
   y_var_names <- grep("v304*", names(df), value = TRUE)
@@ -153,14 +157,14 @@ test_fiml <- function(df) {
   # fit the model using JAGS and perform burnin
   dir <- "C:/Code/m4RH_missing_data_sim/Simulate data"
   setwd(dir)
-  fitted_model <- jags.model('m4rh_mvprobit.bug', data = data4jags2, inits = jags_inits, n.chains = 4, n.adapt = 100)
+  fitted_model <- jags.model('m4rh_mvprobit.bug', data = data4jags2, inits = jags_inits, n.chains = 4, n.adapt = 1000)
   
   # run MCMC and save output
-  out <- coda.samples(model = fitted_model, variable.names = c("a", "e", "Tau"), n.iter = 10000, thin = 5)
+  out <- coda.samples(model = fitted_model, variable.names = c("e", "diff_total"), n.iter = 1000, thin = 5)
 }
 
 # set the number of times the whole cycle of generating and fitting data is repeated
-num_iter <- 2
+num_iter <- 1
 # create an empty dataframe to populate with results later
 results <- data.frame(iter = seq(1, num_iter), 
                       impact_true = numeric(num_iter), std_err_true = numeric(num_iter),
@@ -215,8 +219,8 @@ for (iter in 1:num_iter) {
   results[iter, 7] <- coef(summary(fit_mnar))["treat", 2]
   
   
-#   # multiply impute the data using mi package with defaults
-#   #  Currently, this is failing to converge.  Unclear what the problem is.
+  # multiply impute the data using mi package with defaults
+  #  Currently, this is failing to converge.  Unclear what the problem is.
 #   mi_settings <- mi.info(df_mcar)
 #   mi_settings$include[15] <- FALSE
 #   df_mcar_mi_gelman <- mi(df_mcar)
@@ -226,4 +230,8 @@ for (iter in 1:num_iter) {
   # output <- test_fiml(df_mcar)
 
 }
+# png("convergence_graphs.png")
+# plot(output)
+# dev.off()
+
 

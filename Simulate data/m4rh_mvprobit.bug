@@ -10,8 +10,16 @@ model {
       # It might be because this is necessary to let JAGS know that y is a stochastic node  
       p[i, j] <- step(Z[i, j])
 	  y[i, j] ~ dbern(p[i, j])
-	  }        
-  }
+	  
+	  # create estimated total for y under treatment, y under control, and difference
+	  z_treat[i,j] <- a[j] + b[j]*sex[i] + c[j]*christian[i] + d[j]*muslim[i] + e[j]*(1-treat[i]) + f[j]*age[i] + g[j]*primary[i] + h[j]*secondary[i] + k[j]*higher[i]
+	  z_control[i,j] <- a[j] + b[j]*sex[i] + c[j]*christian[i] + d[j]*muslim[i] - e[j]*treat[i] + f[j]*age[i] + g[j]*primary[i] + h[j]*secondary[i] + k[j]*higher[i]
+	  y_treat[i,j] <- step(z_treat[i,j])
+	  y_control[i,j] <- step(z_control[i,j])
+	  }
+	  ytt[i] <- sum(y_treat[i,])
+	  ytc[i] <- sum(y_control[i,])
+	}
   
   for(j in 1:J) {
 	a[j] ~ dnorm(0, .0001) 
@@ -19,11 +27,11 @@ model {
 	c[j] ~ dnorm(0, .0001) 
 	d[j] ~ dnorm(0, .0001) 
 	e[j] ~ dnorm(0, .0001) 
-  f[j] ~ dnorm(0, .0001) 
-  g[j] ~ dnorm(0, .0001) 
-  h[j] ~ dnorm(0, .0001) 
-  k[j] ~ dnorm(0, .0001) 
+	f[j] ~ dnorm(0, .0001) 
+	g[j] ~ dnorm(0, .0001) 
+	h[j] ~ dnorm(0, .0001) 
+	k[j] ~ dnorm(0, .0001) 
   }
-  
+  diff_total <- mean(ytt) - mean(ytc)
   Tau[1:J, 1:J] ~ dwish(ID[, ], degrees)
 }
