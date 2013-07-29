@@ -32,7 +32,7 @@
 
 # set paths and other housekeeping
 remove(list = ls())
-df_dir <- "C:/Code/m4RH_missing_data_sim/Data"
+df_dir <- "H:/IHA/SHOPS/M+E/SHOPS M&E/2 Country and study-level/Studies/M4RH/Data for Monte Carlo Simulations"
 stata_output <- "H:/IHA/SHOPS/M+E/SHOPS M&E/2 Country and study-level/Studies/M4RH/Data for Monte Carlo Simulations/Simulated data"
 setwd(df_dir)
 library(foreign)
@@ -164,7 +164,7 @@ test_fiml <- function(df) {
 }
 
 # set the number of times the whole cycle of generating and fitting data is repeated
-num_iter <- 1
+num_iter <- 100
 # create an empty dataframe to populate with results later
 results <- data.frame(iter = seq(1, num_iter), 
                       impact_true = numeric(num_iter), std_err_true = numeric(num_iter),
@@ -185,15 +185,15 @@ for (iter in 1:num_iter) {
   treat <- sim_data$treat
   model_df <- cbind(y_total, covars, treat)
   # export the full, complete generated to Stata for use later
-  write.dta(cbind(sim_data$y,covars), paste("Complete_data", iter, "Date", Sys.Date(), ".dta"))
+  write.dta(cbind(sim_data$y,covars, treat), paste("comp_", iter, ".dta", sep =""))
   fit1 <- lm(y_total ~ age + primary + secondary + higher + christian + muslim + treat + sex, data = model_df)
   results[iter, 2] <- coef(summary(fit1))["treat", 1]
   results[iter, 3] <- coef(summary(fit1))["treat", 2]
   
   # remove some data randomly (MCAR)
   mcar_y <- remove_mcar(sim_data$y)
-  df_mcar <- data.frame(mcar_y, covars)
-  write.dta(df_mcar, paste("MCAR_data", iter, "Date", Sys.Date(), ".dta"))
+  df_mcar <- data.frame(mcar_y, covars, treat)
+  write.dta(df_mcar, paste("mcar_", iter, ".dta", sep =""))
   
   # multiply impute MCAR data using amelia package with defaults
   nominal_variables <- names(df_mcar)[!names(df_mcar)=="age"]
@@ -207,8 +207,8 @@ for (iter in 1:num_iter) {
   # Note: There is some slightly repetitive code below.  This is because Zelig cannot be called from within a function due to some weird error
   # remove some data randomly (MNAR)
   mnar_y <- remove_mnar(sim_data$y)
-  df_mnar <- data.frame(mnar_y, covars)
-  write.dta(df_mnar, paste("MNAR_data", iter, "Date", Sys.Date(), ".dta"))
+  df_mnar <- data.frame(mnar_y, covars, treat)
+  write.dta(df_mnar, paste("mnar_", iter, ".dta", sep =""))
 
   # multiply impute MNAR data using amelia package with defaults
   df_mnar_mi <- amelia(df_mnar, m = 5, noms = nominal_variables)
@@ -233,5 +233,5 @@ for (iter in 1:num_iter) {
 # png("convergence_graphs.png")
 # plot(output)
 # dev.off()
-
+write.csv(results, file = paste("results_", "Date", Sys.Date(), ".csv"))
 
