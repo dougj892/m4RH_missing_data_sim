@@ -164,7 +164,7 @@ test_fiml <- function(df) {
 }
 
 # set the number of times the whole cycle of generating and fitting data is repeated
-num_iter <- 100
+num_iter <- 50
 # create an empty dataframe to populate with results later
 results <- data.frame(iter = seq(1, num_iter), 
                       impact_true = numeric(num_iter), std_err_true = numeric(num_iter),
