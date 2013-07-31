@@ -104,6 +104,7 @@ remove_mcar <- function(y) {
 
 # This function takes a matrix of outcome variables and removes p% of these values according a MNAR pattern
 # The model for the missingness pattern is pretty similar to the model for the treatment effect. 
+
 remove_mnar <- function(y) {
   df3 <- data.frame(y, covars)
   k <- length(df3)
@@ -114,8 +115,10 @@ remove_mnar <- function(y) {
   beta  <- temp %*% beta
   epsilon <- matrix(rnorm(n*7),n,7)
   missing_star <- as.matrix(df3) %*% beta + epsilon
-  threshold <- quantile(missing_star, probs = .7)
-  y[missing_star > threshold] <- NA
+  thresholds <- apply(missing_star, 2, function(x) quantile(x, probs = .7))
+  threshmat <- t(matrix(rep(thresholds,3688),7,3688))
+  y[missing_star > threshmat] <- NA
+  dummy <- apply(y, 2, function(x) sum(is.na(x)))
   y
 }
 
