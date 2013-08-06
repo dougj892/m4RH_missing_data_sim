@@ -54,4 +54,4 @@ egen to_drop = anymatch(`outcome_vars'), values(9)
 drop if to_drop
 
 
-save "$temp\DHS data for estimating covariance.dta", replace
+save "$temp\dhs_data.dta", replace

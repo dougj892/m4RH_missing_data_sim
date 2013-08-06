@@ -25,26 +25,33 @@
 # 
 # Package dependencies: mvtnorm, mi, Amelia, Zelig, rjags
 # 
-# To do: 
-#   1. Modify functions so that the accept key values such as the proportion of data missing as parameters.
+# To run this on AWS do the following:
+# 1. Upload the DHS data used as a basis for the Monte Carlo simulations
+# 2. Create a folder to output the Stata datasets to
+# 3. Change the paths below as appropriate
+# 4. Load all packages
 
 
 
 # set paths and other housekeeping
 remove(list = ls())
+set.seed(8675209)
+# the two lines below must be modified to work on a different system
 df_dir <- "H:/IHA/SHOPS/M+E/SHOPS M&E/2 Country and study-level/Studies/M4RH/Data for Monte Carlo Simulations"
 stata_output <- "H:/IHA/SHOPS/M+E/SHOPS M&E/2 Country and study-level/Studies/M4RH/Data for Monte Carlo Simulations/Simulated data"
 setwd(df_dir)
+
+# load packages
 library(foreign)
 library(mvtnorm)
 # library(mi)
 library(Amelia)
 library(Zelig)
-library(rjags)
+# library(rjags)
 
 # Read in data and output from multivariate probit model fit in Stata
-mvp_corr <- as.matrix(read.table("mv probit correlation matrix.txt"))
-df <- read.dta("DHS data for estimating covariance.dta")
+mvp_corr <- as.matrix(read.table("prob_corr_mat.txt"))
+df <- read.dta("dhs_data.dta")
 mvp_beta <- as.matrix(read.table("mvp beta.txt"))
 n <- nrow(df)
 # MV probit correlation matrix has zeroes in top half.  fix this.
@@ -167,7 +174,7 @@ test_fiml <- function(df) {
 }
 
 # set the number of times the whole cycle of generating and fitting data is repeated
-num_iter <- 50
+num_iter <- 3
 # create an empty dataframe to populate with results later
 results <- data.frame(iter = seq(1, num_iter), 
                       impact_true = numeric(num_iter), std_err_true = numeric(num_iter),
@@ -200,7 +207,7 @@ for (iter in 1:num_iter) {
   
   # multiply impute MCAR data using amelia package with defaults
   nominal_variables <- names(df_mcar)[!names(df_mcar)=="age"]
-  df_mcar_mi <- amelia(df_mcar, m = 5, noms = nominal_variables)
+  df_mcar_mi <- amelia(df_mcar, m = 10, noms = nominal_variables)
   df_mcar_mi <- transform(df_mcar_mi, y_total = v304_02+v304_06+v304_07+v304_08+v304_09+v304_13+v304_16) 
   fit_mcar <- zelig(y_total ~ age + primary + secondary + higher + christian + muslim + treat + sex,
                     data = df_mcar_mi, model = "ls")
@@ -214,7 +221,7 @@ for (iter in 1:num_iter) {
   write.dta(df_mnar, paste("mnar_", iter, ".dta", sep =""))
 
   # multiply impute MNAR data using amelia package with defaults
-  df_mnar_mi <- amelia(df_mnar, m = 5, noms = nominal_variables)
+  df_mnar_mi <- amelia(df_mnar, m = 10, noms = nominal_variables)
   df_mnar_mi <- transform(df_mnar_mi, y_total = v304_02+v304_06+v304_07+v304_08+v304_09+v304_13+v304_16) 
   fit_mnar <- zelig(y_total ~ age + primary + secondary + higher + christian + muslim + treat + sex,
                     data = df_mnar_mi, model = "ls")

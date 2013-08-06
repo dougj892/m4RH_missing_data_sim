@@ -62,7 +62,7 @@ matrix define sureg_beta = (c[1,1..8]\c[1,9..16]\c[1,17..24]\c[1,25..32]\c[1,33.
 matrix rownames sureg_beta = v304_02 v304_06 v304_07 v304_08 v304_09 v304_13 v304_16
 
 * Output the stored matrices as tab delimited files for use in the R programs
-mat2txt, matrix(mvp_sig) saving("$temp\mv probit correlation matrix.txt") replace
+mat2txt, matrix(mvp_sig) saving("$temp\prob_corr_mat.txt") replace
 mat2txt, matrix(mvp_sig_se) saving("$temp\mv probit correlation matrix se estimates.txt") replace
 mat2txt, matrix(sureg_sig) saving("$temp\SUREG covariance matrix.txt") replace
 mat2txt, matrix(mvp_beta) saving("$temp\mvp beta.txt") replace
