@@ -80,14 +80,35 @@ gen_data <- function() {
   # equal to a random term for each individual and a random effect for each question
   # In other words, the treatment effect for question j for individual i, delta_ij = alpha_i + beta_j 
   # where alpha ~N(0, .02^2) and beta ~ N(.1, .05^2)
+#   alpha <- rnorm(n, sd = .02)
+#   delta <- rnorm(7, mean = .1, sd = .05)
+#   delta
+#   treat_effect <- matrix(rep(alpha,7),n,7) + t(matrix(rep(delta, n),7,n))
+#   treat_mat <- matrix(rep(treat, 7),n,7)
+#   treat_effect <- treat_effect * treat_mat
+
+  
+  # generate a random treatment effect equal to the following
+  # tao_i = Covars_const_i * beta + epsilon_i + alpha_i
+  # where tao_i is 1 x J, Covars_constant is 1 x (K+1), beta is (K+1) x (J), 
+  # epsilon is 1 x J and alpha_i  is 1 x J.  J is the number of outcome vars and K is the number 
+  # of covariates.  Covars_constant is the covariates plus a vector of 1s.  Alpha_i is included because
+  # I don't have enough intuition to guarantee that drawing epsilon from a multivariate normal distribution
+  # will ensure that there is enough correlation between outcome vars
+  covars_const <- cbind(covars, rep(1,n))
+  k <- length(covars_const)
+  beta <- matrix(rnorm(k*7, mean = .1, sd = .3), k , 7)
+  # make the beta corresponding to age smaller than the others since it can take on larger values
+  temp <- diag(k)
+  temp[1,1] <- .1
+  beta  <- temp %*% beta
+  epsilon <- matrix(rnorm(n*7),n,7)
   alpha <- rnorm(n, sd = .02)
-  delta <- rnorm(7, mean = .1, sd = .05)
-  delta
-  treat_effect <- matrix(rep(alpha,7),n,7) + t(matrix(rep(delta, n),7,n))
+  treat_effect <- as.matrix(covars_const) %*% beta + alpha
   treat_mat <- matrix(rep(treat, 7),n,7)
   treat_effect <- treat_effect * treat_mat
-
-  # generate random errors based on covariance matrix from mv provit fit in Stata
+  
+  # generate random errors based on covariance matrix from mv probit fit in Stata
   errors <- rmvnorm(n, mean = rep(0,7), mvp_corr)
   
   # generate latent ys
@@ -98,7 +119,6 @@ gen_data <- function() {
   z <- list(y = y, treat = treat)
   z
 }
-
 
 # This function takes a matrix of outcome variables and randomly removes p% of these values
 remove_mcar <- function(y) {
